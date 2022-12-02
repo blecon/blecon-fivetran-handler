@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  webhook-app
+
+  Template for webhook-app
+
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  TableName:
+    Type: String
+    Default: "webhook-table"
+
+Resources:
+
+  ProcessRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: process_request/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TableName
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TableName
+      Events:
+        WriteRequest:
+          Type: Api
+          Properties:
+            Path: /{identifier+}
+            Method: post
+        GetRequests:
+          Type: Api
+          Properties:
+            Path: /{identifier+}
+            Method: get
+
+  RequestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: "InstanceID"
+        AttributeType: "S"
+      - AttributeName: "RequestTimestamp"
+        AttributeType: "S"
+      KeySchema:
+      - AttributeName: "InstanceID"
+        KeyType: "HASH"
+      - AttributeName: "RequestTimestamp"
+        KeyType: "RANGE"
+
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: No
+      TableName: !Ref TableName
+
+Outputs:
+  WebHookApi:
+    Description: "API Gateway endpoint URL for Prod stage for webhook example"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
